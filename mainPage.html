@@ -1,0 +1,322 @@
+<html>
+
+<head>
+   <script src="https://cdn.firebase.com/js/client/2.4.2/firebase.js"></script>
+   <script type="text/javascript" src="index.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/p5@1.5.0/lib/p5.js"></script>
+   <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Gravitas+One&display=swap" rel="stylesheet">
+   <style>
+      @import url('https://fonts.googleapis.com/css2?family=Gravitas+One&display=swap');
+
+      body {
+         font-family: "Gravitas One", cursive;
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         justify-content: center;
+
+         background-image: url("page.gif");
+        background-repeat: repeat;
+        color:white;
+      }
+
+      /* The Modal (background) */
+      .modal {
+         display: none;
+         /* Hidden by default */
+         position: fixed;
+         /* Stay in place */
+         z-index: 1;
+         /* Sit on top */
+         padding-top: 100px;
+         /* Location of the box */
+         left: 0;
+         top: 0;
+         width: 100%;
+         /* Full width */
+         height: 100%;
+         /* Full height */
+         overflow: auto;
+         /* Enable scroll if needed */
+         background-color: rgb(0, 0, 0);
+         /* Fallback color */
+         background-color: rgba(0, 0, 0, 0.4);
+         /* Black w/ opacity */
+         color:black;
+      }
+
+      /* Modal Content */
+      .modal-content {
+         background-color: #fefefe;
+         margin: auto;
+         padding: 20px;
+         border: 1px solid #888;
+         width: 80%;
+      }
+
+      /* The Close Button */
+      .close {
+         color: #aaaaaa;
+         float: right;
+         font-size: 28px;
+         font-weight: bold;
+      }
+
+      .close:hover,
+      .close:focus {
+         color: #000;
+         text-decoration: none;
+         cursor: pointer;
+      }
+
+      p {
+         display: inline-block;
+         text-align: center;
+      }
+
+      #currentClass {
+         display: inline-block;
+         text-align: center;
+         font-weight: bold;
+      }
+
+      #box {
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         justify-content: center;
+      }
+   </style>
+</head>
+
+<body>
+   <div id="box">
+      <div id="myModal" class="modal">
+
+         <!-- Modal content -->
+         <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="output"></p>
+         </div>
+
+      </div>
+      <p>The prompt for drawing is:
+      <p id="currentClass"></p>
+      </p>
+      <form action="javascript:patch()">
+         <textarea id="code"></textarea>
+         <input id="but1" type="submit">
+      </form>
+      <span id="time">00:30</span>
+   </div>
+
+
+   <script>
+
+      var shouldPostBool;
+      let clearButton;
+      let canvas;
+
+      let doodleClassifier;
+
+      var score;
+
+      var modalIsUp = false;
+
+      actualTimer();
+
+      let classes = ['aircraft_carrier', 'airplane', 'alarm_clock', 'ambulance', 'angel', 'animal_migration', 'ant', 'anvil', 'apple', 'arm', 'asparagus', 'axe', 'backpack', 'banana', 'bandage', 'barn', 'baseball', 'baseball_bat', 'basket', 'basketball', 'bat', 'bathtub', 'beach', 'bear', 'beard', 'bed', 'bee', 'belt', 'bench', 'bicycle', 'binoculars', 'bird', 'birthday_cake', 'blackberry', 'blueberry', 'book', 'boomerang', 'bottlecap', 'bowtie', 'bracelet', 'brain', 'bread', 'bridge', 'broccoli', 'broom', 'bucket', 'bulldozer', 'bus', 'bush', 'butterfly', 'cactus', 'cake', 'calculator', 'calendar', 'camel', 'camera', 'camouflage', 'campfire', 'candle', 'cannon', 'canoe', 'car', 'carrot', 'castle', 'cat', 'ceiling_fan', 'cello', 'cell_phone', 'chair', 'chandelier', 'church', 'circle', 'clarinet', 'clock', 'cloud', 'coffee_cup', 'compass', 'computer', 'cookie', 'cooler', 'couch', 'cow', 'crab', 'crayon', 'crocodile', 'crown', 'cruise_ship', 'cup', 'diamond', 'dishwasher', 'diving_board', 'dog', 'dolphin', 'donut', 'door', 'dragon', 'dresser', 'drill', 'drums', 'duck', 'dumbbell', 'ear', 'elbow', 'elephant', 'envelope', 'eraser', 'eye', 'eyeglasses', 'face', 'fan', 'feather', 'fence', 'finger', 'fire_hydrant', 'fireplace', 'firetruck', 'fish', 'flamingo', 'flashlight', 'flip_flops', 'floor_lamp', 'flower', 'flying_saucer', 'foot', 'fork', 'frog', 'frying_pan', 'garden', 'garden_hose', 'giraffe', 'goatee', 'golf_club', 'grapes', 'grass', 'guitar', 'hamburger', 'hammer', 'hand', 'harp', 'hat', 'headphones', 'hedgehog', 'helicopter', 'helmet', 'hexagon', 'hockey_puck', 'hockey_stick', 'horse', 'hospital', 'hot_air_balloon', 'hot_dog', 'hot_tub', 'hourglass', 'house', 'house_plant', 'hurricane', 'ice_cream', 'jacket', 'jail', 'kangaroo', 'key', 'keyboard', 'knee', 'knife', 'ladder', 'lantern', 'laptop', 'leaf', 'leg', 'light_bulb', 'lighter', 'lighthouse', 'lightning', 'line', 'lion', 'lipstick', 'lobster', 'lollipop', 'mailbox', 'map', 'marker', 'matches', 'megaphone', 'mermaid', 'microphone', 'microwave', 'monkey', 'moon', 'mosquito', 'motorbike', 'mountain', 'mouse', 'moustache', 'mouth', 'mug', 'mushroom', 'nail', 'necklace', 'nose', 'ocean', 'octagon', 'octopus', 'onion', 'oven', 'owl', 'paintbrush', 'paint_can', 'palm_tree', 'panda', 'pants', 'paper_clip', 'parachute', 'parrot', 'passport', 'peanut', 'pear', 'peas', 'pencil', 'penguin', 'piano', 'pickup_truck', 'picture_frame', 'pig', 'pillow', 'pineapple', 'pizza', 'pliers', 'police_car', 'pond', 'pool', 'popsicle', 'postcard', 'potato', 'power_outlet', 'purse', 'rabbit', 'raccoon', 'radio', 'rain', 'rainbow', 'rake', 'remote_control', 'rhinoceros', 'rifle', 'river', 'roller_coaster', 'rollerskates', 'sailboat', 'sandwich', 'saw', 'saxophone', 'school_bus', 'scissors', 'scorpion', 'screwdriver', 'sea_turtle', 'see_saw', 'shark', 'sheep', 'shoe', 'shorts', 'shovel', 'sink', 'skateboard', 'skull', 'skyscraper', 'sleeping_bag', 'smiley_face', 'snail', 'snake', 'snorkel', 'snowflake', 'snowman', 'soccer_ball', 'sock', 'speedboat', 'spider', 'spoon', 'spreadsheet', 'square', 'squiggle', 'squirrel', 'stairs', 'star', 'steak', 'stereo', 'stethoscope', 'stitches', 'stop_sign', 'stove', 'strawberry', 'streetlight', 'string_bean', 'submarine', 'suitcase', 'sun', 'swan', 'sweater', 'swing_set', 'sword', 'syringe', 'table', 'teapot', 'teddy-bear', 'telephone', 'television', 'tennis_racquet', 'tent', 'The_Eiffel_Tower', 'The_Great_Wall_of_China', 'The_Mona_Lisa', 'tiger', 'toaster', 'toe', 'toilet', 'tooth', 'toothbrush', 'toothpaste', 'tornado', 'tractor', 'traffic_light', 'train', 'tree', 'triangle', 'trombone', 'truck', 'trumpet', 't-shirt', 'umbrella', 'underwear', 'van', 'vase', 'violin', 'washing_machine', 'watermelon', 'waterslide', 'whale', 'wheel', 'windmill', 'wine_bottle', 'wine_glass', 'wristwatch', 'yoga', 'zebra', 'zigzag']
+      let currentClass = classes[Math.floor(Math.random() * classes.length)];
+      document.getElementById('currentClass').innerHTML = currentClass;
+
+      function setup() {
+         canvas = createCanvas(400, 400);
+         canvas.parent("box");
+         clearButton = createButton('clear');
+         createElement('br');
+         clearButton.id = 'clearButton';
+         clearButton.mousePressed(clearCanvas);
+         background(255);
+
+         doodleClassifier = ml5.imageClassifier('DoodleNet', modelReady);
+         resultsDiv = createDiv('model loading');
+         createElement('br');
+         createElement('br');
+         createElement('br');
+         createP("Instructions");
+         createP("GLOBAL MODE")
+         createP("Draw an image on your canvas based on the prompt given at the top of the screen");
+         createP("View your similarity to the prompt below your canvas");
+         createP("Within 30 seconds, attempt to reach as high of a similarity as you can!")
+         createP("You will receive a global ranking based on your attempt.")
+         createP("FRIEND MODE")
+         createP("Enter a shared code between you and your friends")
+         createP("Join the same server to compete!")
+      }
+
+      function modelReady() {
+         console.log('model loaded');
+         doodleClassifier.classify(canvas, gotResults);
+      }
+
+      function gotResults(error, results) {
+         if (error) {
+            console.error(error);
+            return;
+         }
+         let theIndex = 0;
+         for (let i = 0; i < results.length; i++) {
+            if (currentClass === results[i].label) {
+               theIndex = i;
+            }
+         }
+         let content = `${results[theIndex].label}
+                 ${nf(100 * results[theIndex].confidence, 2, 1)}%<br/>`;
+         score = nf(100 * results[theIndex].confidence, 2, 1);
+
+         if (results[theIndex].label === currentClass) {
+            shouldPostBool = true;
+         } else {
+            shouldPostBool = false;
+         }
+
+         resultsDiv.html(content);
+         doodleClassifier.classify(canvas, gotResults);
+
+
+      }
+
+      function clearCanvas() {
+         background(255);
+      }
+
+      function draw() {
+         if (mouseIsPressed) {
+            strokeWeight(16);
+            line(mouseX, mouseY, pmouseX, pmouseY);
+         }
+      }
+
+      var myInterval;
+      function startTimer(duration, display) {
+         var timer = duration, minutes, seconds;
+         myInterval = setInterval(function () {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = minutes + ":" + seconds;
+            if (--timer < 0) {
+               timer = duration;
+               document.getElementById('but1').click();
+            }
+         }, 1000);
+      }
+
+      function actualTimer() {
+         var fiveMinutes = 30,
+            display = document.querySelector('#time');
+         startTimer(fiveMinutes, display);
+      };
+
+      // Get the modal
+      var modal = document.getElementById("myModal");
+
+      // Get the button that opens the modal
+      var btn = document.getElementById("but1");
+
+      // Get the <span> element that closes the modal
+      var span = document.getElementsByClassName("close")[0];
+
+      // When the user clicks the button, open the modal 
+      btn.onclick = function () {
+         modal.style.display = "block";
+         modalIsUp = true;
+         clearInterval(myInterval);
+
+      }
+
+      // When the user clicks on <span> (x), close the modal
+      span.onclick = function () {
+         modal.style.display = "none";
+         currentClass = classes[Math.floor(Math.random() * classes.length)];
+         document.getElementById('currentClass').innerHTML = currentClass;
+         clearCanvas();
+         actualTimer();
+         modalIsUp = false;
+      }
+
+      // When the user clicks anywhere outside of the modal, close it
+      window.onclick = function (event) {
+         if (event.target == modal) {
+            modal.style.display = "none";
+            modal.style.display = "none";
+            currentClass = classes[Math.floor(Math.random() * classes.length)];
+            document.getElementById('currentClass').innerHTML = currentClass;
+            clearCanvas();
+            actualTimer();
+            modalIsUp = false;
+         }
+      }
+      async function patch() {
+         var drawing = currentClass;
+         var code = document.getElementById('code').value == "" ? "all" : document.getElementById('code').value;
+         fetch('https://hackgt-f50a1-default-rtdb.firebaseio.com/' + code + '.json', {
+            method: 'GET',
+            headers: {
+               'Content-Type': 'application/json'
+            },
+         }).then((response) => response.json())
+            .then((data) => {
+               var arr = [];
+               if (data == null || data[currentClass] == null) {
+                  arr = [];
+               } else {
+                  arr = data[currentClass];
+               }
+               var index = 0;
+               if (!shouldPostBool) {
+                  score = 0;
+               }
+               while (arr[index] != null && arr[index] < score) {
+                  index++;
+               }
+               arr.splice(index, 0, score / 100);
+               console.log(drawing);
+
+               obj = {}
+               obj[drawing] = arr;
+
+               fetch('https://hackgt-f50a1-default-rtdb.firebaseio.com/' + code + '.json', {
+                  method: 'PATCH',
+                  headers: {
+                     'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(obj)
+               });
+               console.log("hello1");
+               if (shouldPostBool) {
+                  if (code != "all") {
+                     document.getElementById('output').innerHTML = "You ranked " + (index + 1) + " out of " + arr.length + " in group '" + code + "' for your drawing of " + drawing + ".";
+                  } else {
+                     document.getElementById('output').innerHTML = "You ranked " + (index + 1) + " out of " + arr.length + " in the ENTIRE WORLD for your drawing of " + drawing + ".";
+                  }
+               }
+               else {
+                  console.log('hello');
+                  document.getElementById('output').innerHTML = "Accuracy of drawing not high enough to be correctly recorded."
+               }
+            }
+            );
+      }
+
+   </script>
+
+</body>
+
+</html>
